@@ -1,39 +1,49 @@
 #include <iostream>
+#include <fstream>
 
-#include "ftxui/dom/elements.hpp"
-#include "ftxui/screen/screen.hpp"
-#include "ftxui/screen/string.hpp"
+#include "ftxui/component/captured_mouse.hpp"  // for ftxui
+#include "ftxui/component/component.hpp"       // for Input, Renderer, Vertical
+#include "ftxui/component/component_base.hpp"  // for ComponentBase
+#include "ftxui/component/component_options.hpp"  // for InputOption
+#include "ftxui/component/screen_interactive.hpp"  // for Component, ScreenInteractive
+#include "ftxui/dom/elements.hpp"  // for text, hbox, separator, Element, operator|, vbox, border
+#include "ftxui/util/ref.hpp"  // for Ref
 
+std::ofstream g_file;
+std::string g_input;
 int main(void) {
   using namespace ftxui;
+  using namespace std;
 
-  auto summary = [&] {
-    auto content = vbox({
-        hbox({text(L"- done:   "), text(L"3") | bold}) | color(Color::Green),
-        hbox({text(L"- active: "), text(L"2") | bold}) | color(Color::RedLight),
-        hbox({text(L"- queue:  "), text(L"9") | bold}) | color(Color::Red),
+  // init
+  g_file.open("1.log");
+  g_file << "start\n";
+  g_file.flush();
+  InputOption option;
+    option.on_enter = [&]() {
+      g_file << "press enter\n";
+      g_file.flush();
+    };
+    Component input_key_words =
+        Input(&g_input, "input words", option);
+
+    auto component = Container::Vertical({
+        input_key_words,
     });
-    return window(text(L" Summary "), content);
-  };
 
-  auto document =  //
-      vbox({
-          hbox({
-              summary(),
-              summary(),
-              summary() | flex,
-          }),
-          summary(),
-          summary(),
-      });
+    auto renderer = Renderer(component, [&] {
+      
+      return vbox({
+                 hbox(text(" Search : "), input_key_words->Render()),
+                 separator(),
+             }) |
+             border;
+    });
 
-  // Limit the size of the document to 80 char.
-  document = document | size(WIDTH, LESS_THAN, 80);
 
-  auto screen = Screen::Create(Dimension::Full(), Dimension::Fit(document));
-  Render(screen, document);
 
-  std::cout << screen.ToString() << std::endl;
-
+    auto screen = ScreenInteractive::TerminalOutput();
+    screen.Loop(renderer);
+  g_file.close();
   return EXIT_SUCCESS;
 }
